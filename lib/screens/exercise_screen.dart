@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'bluetooth_screen.dart';
+
 class ExercisePage extends StatefulWidget {
   const ExercisePage({super.key, required this.title, required this.id});
 
@@ -95,6 +97,15 @@ class ExercisePageState extends State<ExercisePage> {
     );
   }
 
+  void _navigateToBluetooth() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BluetoothPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,6 +191,17 @@ class ExercisePageState extends State<ExercisePage> {
                   ),
                   child: const Text(
                     'Add Performance',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: _navigateToBluetooth,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                  ),
+                  child: const Text(
+                    'Connect to bluetooth',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
