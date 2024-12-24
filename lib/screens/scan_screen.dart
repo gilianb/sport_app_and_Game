@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+import '../utils/bluetooth_device_provider';
 import 'device_screen.dart';
 import '../utils/snackbar.dart';
 import '../widgets/system_device_tile.dart';
 import '../widgets/scan_result_tile.dart';
 import '../utils/extra.dart';
+import 'package:provider/provider.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({Key? key}) : super(key: key);
@@ -57,13 +59,15 @@ class _ScanScreenState extends State<ScanScreen> {
       var withServices = [Guid("180f")]; // Battery Level Service
       _systemDevices = await FlutterBluePlus.systemDevices(withServices);
     } catch (e) {
-      Snackbar.show(ABC.b, prettyException("System Devices Error:", e), success: false);
+      Snackbar.show(ABC.b, prettyException("System Devices Error:", e),
+          success: false);
       print(e);
     }
     try {
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
     } catch (e) {
-      Snackbar.show(ABC.b, prettyException("Start Scan Error:", e), success: false);
+      Snackbar.show(ABC.b, prettyException("Start Scan Error:", e),
+          success: false);
       print(e);
     }
     if (mounted) {
@@ -75,18 +79,30 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       FlutterBluePlus.stopScan();
     } catch (e) {
-      Snackbar.show(ABC.b, prettyException("Stop Scan Error:", e), success: false);
+      Snackbar.show(ABC.b, prettyException("Stop Scan Error:", e),
+          success: false);
       print(e);
     }
   }
 
   void onConnectPressed(BluetoothDevice device) {
     device.connectAndUpdateStream().catchError((e) {
-      Snackbar.show(ABC.c, prettyException("Connect Error:", e), success: false);
+      Snackbar.show(ABC.c, prettyException("Connect Error:", e),
+          success: false);
     });
-    MaterialPageRoute route = MaterialPageRoute(
-        builder: (context) => DeviceScreen(device: device), settings: RouteSettings(name: '/DeviceScreen'));
-    Navigator.of(context).push(route);
+
+    // Stockez l'appareil dans le provider
+    final provider =
+        Provider.of<BluetoothDeviceProvider>(context, listen: false);
+    provider.setConnectedDevice(device);
+
+    // Naviguez vers DeviceScreen
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DeviceScreen(device: device),
+        settings: RouteSettings(name: '/DeviceScreen'),
+      ),
+    );
   }
 
   Future onRefresh() {
@@ -107,7 +123,8 @@ class _ScanScreenState extends State<ScanScreen> {
         backgroundColor: Colors.red,
       );
     } else {
-      return FloatingActionButton(child: const Text("SCAN"), onPressed: onScanPressed);
+      return FloatingActionButton(
+          child: const Text("SCAN"), onPressed: onScanPressed);
     }
   }
 

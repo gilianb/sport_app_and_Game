@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-import 'bluetooth_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:sport_app/screens/scan_screen.dart';
+import '../utils/bluetooth_device_provider';
+import 'dart:async';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class ExercisePage extends StatefulWidget {
   const ExercisePage({super.key, required this.title, required this.id});
-
   final String title;
   final String? id;
 
@@ -97,17 +99,57 @@ class ExercisePageState extends State<ExercisePage> {
     );
   }
 
-  void _navigateToBluetooth() {
+  void _navigateToBluetooth() async {
+    // Navigue vers l'écran Bluetooth et récupère l'appareil connecté
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BluetoothPage(),
+        builder: (context) => const ScanScreen(),
       ),
     );
   }
 
+  Future read_from_ESP(device) async {
+    List<BluetoothService> services = await device.discoverServices();
+    services.forEach((service) async {
+      var characteristics = service.characteristics;
+      Guid chara = Guid("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+
+      for (BluetoothCharacteristic c in characteristics) {
+        if (c.characteristicUuid == chara) {
+          if (c.properties.read) {
+            List<int> value = await c.read();
+            print('value : $value');
+            print('characteristique : $c');
+          }
+        }
+      }
+    });
+  }
+
+  Future write_to_ESP(device) async {
+    // Lit toutes les caractéristiques
+    List<BluetoothService> services = await device.discoverServices();
+    services.forEach((service) async {
+      var characteristics = service.characteristics;
+      for (BluetoothCharacteristic c in characteristics) {
+        if (c.properties.write) {
+          await c
+              .write([1], withoutResponse: c.properties.writeWithoutResponse);
+          if (c.properties.read) {
+            List<int> a = await c.read();
+            print(a);
+          }
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<BluetoothDeviceProvider>(context);
+    final connectedDevice = provider.connectedDevice;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 15, 91, 124),
@@ -154,17 +196,47 @@ class ExercisePageState extends State<ExercisePage> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'remain time: 15 min',
+                  'Remain time: 15 min',
                   style: TextStyle(
                     fontSize: 20,
                     color: Color.fromARGB(255, 134, 68, 68),
                   ),
                 ),
                 const SizedBox(height: 40),
+
+                // Section Bluetooth
+                if (connectedDevice != null) ...[
+                  Text(
+                    'Connected to: ${connectedDevice.name}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Device ID: ${connectedDevice.remoteId}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ] else ...[
+                  const Text(
+                    'No device connected',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 40),
+
                 ElevatedButton(
-                  onPressed: () {
-                    // Add your START GAME logic here
-                  },
+                  onPressed: () async {
+                    await write_to_ESP(connectedDevice);
+                  }, // Envoie le signal '1'
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                         vertical: 16.0, horizontal: 32.0),
@@ -201,7 +273,7 @@ class ExercisePageState extends State<ExercisePage> {
                     backgroundColor: Colors.teal,
                   ),
                   child: const Text(
-                    'Connect to bluetooth',
+                    'Connect to Bluetooth',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
