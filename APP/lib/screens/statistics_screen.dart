@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StatisticsPage extends StatefulWidget {
-  const StatisticsPage({super.key, required this.title});
-
+  const StatisticsPage({super.key, required this.title, required this.id});
   final String title;
+  final String? id;
 
   @override
   State<StatisticsPage> createState() => StatisticsPageState();
@@ -69,8 +70,8 @@ class StatisticsPageState extends State<StatisticsPage>
           TabBarView(
             controller: _tabController,
             children: [
-              PersonalStatisticsTab(),
-              GlobalStatisticsTab(),
+              UserPerformanceStatistics(userId: widget.id),
+              AllUsersStatistics()
             ],
           ),
         ],
@@ -79,44 +80,112 @@ class StatisticsPageState extends State<StatisticsPage>
   }
 }
 
-class PersonalStatisticsTab extends StatelessWidget {
+class AllUsersStatistics extends StatelessWidget {
+  Future<List<Map<String, dynamic>>> _fetchAllUsersData() async {
+    final usersCollection = FirebaseFirestore.instance.collection('users');
+    final querySnapshot = await usersCollection.get();
+
+    // Récupération des données et calcul des statistiques
+    return querySnapshot.docs.map((doc) {
+      final data = doc.data();
+      final performanceHistory =
+          List<Map<String, dynamic>>.from(data['performanceHistory'] ?? []);
+      final totalDistance = performanceHistory
+          .map((e) => double.tryParse(e['distance'].toString()) ?? 0.0)
+          .fold(0.0, (double sum, double element) => sum + element);
+
+      final totalTime = performanceHistory
+          .map((e) => double.tryParse(e['time'].toString()) ?? 0.0)
+          .fold(0.0, (double sum, double element) => sum + element);
+
+      return {
+        'username': data['username'] ?? 'Unknown', // Nom de l'utilisateur
+        'totalDistance': totalDistance,
+        'totalTime': totalTime,
+      };
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchAllUsersData(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text("Erreur : ${snapshot.error}"));
+        } else if (snapshot.hasData) {
+          final usersData = snapshot.data!;
+          return _buildTable(usersData);
+        } else {
+          return const Center(child: Text("Aucune donnée disponible."));
+        }
+      },
+    );
+  }
+
+  Widget _buildTable(List<Map<String, dynamic>> usersData) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
           const Text(
-            'My Statistics',
+            'All Users Statistics',
             style: TextStyle(
                 fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 20),
-          // Tableau des statistiques personnelles
           Expanded(
-            child: ListView(
-              children: [
-                _buildStatRow("Number of trainig", "15"),
-                _buildStatRow("Total distance", "45 km"),
-                _buildStatRow("Total time", "10 h"),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Placeholder pour le graphique
-          SizedBox(
-            height: 200,
-            child: Container(
-              color: Colors.blueGrey,
-              child: const Center(
-                child: Text(
-                  'Graph here',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+            child: SingleChildScrollView(
+              scrollDirection:
+                  Axis.horizontal, // Permet le défilement horizontal
+              child: DataTable(
+                columns: const [
+                  DataColumn(
+                    label: Text(
+                      'Username',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
                   ),
-                ),
+                  DataColumn(
+                    label: Text(
+                      'Total Distance (km)',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Total Time (h)',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                  ),
+                ],
+                rows: usersData.map((user) {
+                  return DataRow(cells: [
+                    DataCell(Text(
+                      user['username'],
+                      style: const TextStyle(color: Colors.white70),
+                    )),
+                    DataCell(Text(
+                      user['totalDistance'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70),
+                    )),
+                    DataCell(Text(
+                      user['totalTime'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70),
+                    )),
+                  ]);
+                }).toList(),
               ),
             ),
           ),
@@ -124,69 +193,116 @@ class PersonalStatisticsTab extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildStatRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, color: Colors.white70),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class GlobalStatisticsTab extends StatelessWidget {
+class UserPerformanceStatistics extends StatelessWidget {
+  final String? userId;
+
+  UserPerformanceStatistics({required this.userId});
+
+  Future<List<Map<String, dynamic>>> _fetchUserData() async {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
+    final userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      throw Exception("No user found.");
+    }
+
+    final data = userDoc.data();
+    final performanceHistory =
+        List<Map<String, dynamic>>.from(data?['performanceHistory'] ?? []);
+
+    // Assurez-vous que chaque entrée a les champs nécessaires
+    return performanceHistory.map((performance) {
+      return {
+        'date': performance['date'] ?? 'Unknown Date', // Date de la performance
+        'distance': double.tryParse(performance['distance'].toString()) ?? 0.0,
+        'time': double.tryParse(performance['time'].toString()) ?? 0.0,
+      };
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchUserData(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text("Error : ${snapshot.error}"));
+        } else if (snapshot.hasData) {
+          final performanceData = snapshot.data!;
+          return _buildTable(performanceData);
+        } else {
+          return const Center(child: Text("No data available."));
+        }
+      },
+    );
+  }
+
+  Widget _buildTable(List<Map<String, dynamic>> performanceData) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
           const Text(
-            'Global Statistics',
+            'User Performance Statistics',
             style: TextStyle(
                 fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: ListView(
-              children: [
-                _buildStatRow("total number of users", "120"),
-                _buildStatRow("total Distance", "4500 km"),
-                _buildStatRow("Total time", "1000 h"),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const [
+                  DataColumn(
+                    label: Text(
+                      'Date',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Distance (km)',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Text(
+                      'Time (h)',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                  ),
+                ],
+                rows: performanceData.map((performance) {
+                  return DataRow(cells: [
+                    DataCell(Text(
+                      performance['date'],
+                      style: const TextStyle(color: Colors.white70),
+                    )),
+                    DataCell(Text(
+                      performance['distance'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70),
+                    )),
+                    DataCell(Text(
+                      performance['time'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70),
+                    )),
+                  ]);
+                }).toList(),
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, color: Colors.white70),
           ),
         ],
       ),

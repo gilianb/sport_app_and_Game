@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:sport_app/screens/play_screen.dart';
 import 'package:sport_app/screens/scan_screen.dart';
 import '../utils/bluetooth_device_provider';
 import 'dart:async';
@@ -66,9 +67,10 @@ class ExercisePageState extends State<ExercisePage> {
                     'distance': double.parse(distanceController.text),
                     'time': timeController.text,
                     //'timestamp': Timestamp.now(),
+                    //DateTime now = new DateTime.now();
+                    //DateTime date = new DateTime(now.year, now.month, now.day);
                   };
 
-                  // Mise à jour Firestore
                   final userRef = FirebaseFirestore.instance
                       .collection('users')
                       .doc(widget
@@ -105,6 +107,17 @@ class ExercisePageState extends State<ExercisePage> {
       context,
       MaterialPageRoute(
         builder: (context) => const ScanScreen(),
+      ),
+    );
+  }
+
+  void _navigateToPlay() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PlayScreen(
+          remainTime: Duration(seconds: 10), // Exemple : 15 minutes
+        ),
       ),
     );
   }
@@ -235,8 +248,31 @@ class ExercisePageState extends State<ExercisePage> {
 
                 ElevatedButton(
                   onPressed: () async {
-                    await write_to_ESP(connectedDevice);
-                  }, // Envoie le signal '1'
+                    if (connectedDevice == null) {
+                      //if no device connected show error
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text("No Device Connected"),
+                            content: const Text(
+                                "Please connect to a device first before starting the exercise."),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text("OK"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    } else {
+                      await write_to_ESP(connectedDevice); //send 1 to ESP
+                      _navigateToPlay(); //start the countdown
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                         vertical: 16.0, horizontal: 32.0),

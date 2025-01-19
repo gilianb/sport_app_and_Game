@@ -29,8 +29,8 @@ class MyHomePageState extends State<MyHomePage> {
         context,
         MaterialPageRoute(
           builder: (context) => StatisticsPage(
-              title:
-                  ' $subtitle Mode'), // Replace with different pages if needed
+              title: ' $subtitle Mode',
+              id: id), // Replace with different pages if needed
         ),
       );
     } else if (subtitle == 'Fun time') {
