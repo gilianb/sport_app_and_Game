@@ -5,16 +5,16 @@ import 'package:sport_app/screens/scan_screen.dart';
 import '../utils/bluetooth_device_provider';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-class ExercisePage extends StatefulWidget {
-  const ExercisePage({super.key, required this.title, required this.id});
+class DuelPage extends StatefulWidget {
+  const DuelPage({super.key, required this.title, required this.id});
   final String title;
   final String? id;
 
   @override
-  State<ExercisePage> createState() => ExercisePageState();
+  State<DuelPage> createState() => DuelPageState();
 }
 
-class ExercisePageState extends State<ExercisePage> {
+class DuelPageState extends State<DuelPage> {
   final List<Map<String, dynamic>> performanceHistory = [];
 
   void CheckConn() async {
@@ -116,7 +116,7 @@ class ExercisePageState extends State<ExercisePage> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/exercise.jpg'),
+                image: AssetImage('assets/duel_screen.jpg'),
                 fit: BoxFit.cover,
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'exercise_screen.dart';
 import 'fun_screen.dart';
 import 'statistics_screen.dart';
+import 'duel_screen.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.id});
@@ -19,27 +20,31 @@ class MyHomePageState extends State<MyHomePage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ExercisePage(
-              title: ' $subtitle Mode',
-              id: id), // Replace with different pages if needed
+          builder: (context) =>
+              ExercisePage(title: ' $subtitle Mode', id: widget.id),
         ),
       );
     } else if (subtitle == 'Statistics') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => StatisticsPage(
-              title: ' $subtitle Mode',
-              id: id), // Replace with different pages if needed
+          builder: (context) =>
+              StatisticsPage(title: ' $subtitle Mode', id: widget.id),
         ),
       );
     } else if (subtitle == 'Fun time') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => FunPage(
-              title:
-                  ' $subtitle Mode'), // Replace with different pages if needed
+          builder: (context) => FunPage(title: ' $subtitle Mode'),
+        ),
+      );
+    } else if (subtitle == 'Duel') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              DuelPage(title: ' $subtitle Mode', id: widget.id),
         ),
       );
     }
@@ -60,7 +65,6 @@ class MyHomePageState extends State<MyHomePage> {
           )),
       body: Stack(
         children: [
-          // Background Image
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -69,7 +73,6 @@ class MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
-          // Content Overlay
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -96,6 +99,8 @@ class MyHomePageState extends State<MyHomePage> {
                           "Mode 2", Icons.sports_soccer, "Fun time", widget.id),
                       _buildModeCard(
                           "Mode 3", Icons.query_stats, "Statistics", widget.id),
+                      _buildModeCard(
+                          "Mode 4", Icons.sports_kabaddi, "Duel", widget.id),
                     ],
                   ),
                 ),

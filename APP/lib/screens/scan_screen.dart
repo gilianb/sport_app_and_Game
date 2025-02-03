@@ -133,12 +133,13 @@ class _ScanScreenState extends State<ScanScreen> {
         .map(
           (d) => SystemDeviceTile(
             device: d,
-            onOpen: () => Navigator.of(context).push(
+            onOpen: () => (),
+            /* Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => DeviceScreen(device: d),
-                settings: RouteSettings(name: '/DeviceScreen'),
-              ),
-            ),
+                settings: RouteSettings(name: '/DeviceScreen'),*/
+            //),
+            //),
             onConnect: () => onConnectPressed(d),
           ),
         )
@@ -168,7 +169,7 @@ class _ScanScreenState extends State<ScanScreen> {
           onRefresh: onRefresh,
           child: ListView(
             children: <Widget>[
-              ..._buildSystemDeviceTiles(context),
+              //..._buildSystemDeviceTiles(context),
               ..._buildScanResultTiles(context),
             ],
           ),
