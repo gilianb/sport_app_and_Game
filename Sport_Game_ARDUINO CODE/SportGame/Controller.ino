@@ -14,7 +14,7 @@ const uint8_t MY_ID = 1;    ////
 // Defines
 // Controler defines
 #define NUM_OF_DEVICES 2
-#define NUM_OF_PLAYERS 1
+#define NUM_OF_PLAYERS 2
 #define TIME_THRESHOLD 300000  // in ms
 #define MAX_TIMESTAMP_NUM TIME_THRESHOLD/1000  // TODO: logic is that we will not have button press faster than every 0.5 sec, could think of better solution...
 #define COUNTER_THRESHOLD 20
@@ -171,9 +171,7 @@ void fsmTransition(bool received_message, message_opcode opcode, bool start_game
 
   // Reply color scan
   if (opcode == SCAN_COLOR) {
-    Serial.println("DEBUG: Got Scan request");
     sendMessage(ReceiveData.sender_id, SCAN_RESPONSE);
-    Serial.println("DEBUG: Sent scan response");
     return;
   }
 
@@ -242,14 +240,10 @@ void fsmTransition(bool received_message, message_opcode opcode, bool start_game
 // Callback when data is received
 void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   if(!(state == IDLE || state == LIGHT_ON || state == LIGHT_OFF)) {
-    Serial.print("DEBUG: Don't enter onDataRecv");
-    Serial.print(ReceiveData.opcode);
-    Serial.print(state);
     return;
   }
   memcpy(&ReceiveData, incomingData, sizeof(ReceiveData));
   bool received_valid_message = ReceiveData.sender_id < NUM_OF_DEVICES;
-  Serial.print("DEBUG: Entered onDataRecv");
   if(MY_VERBOSITY < HIGH_VERB && received_valid_message) {
     Serial.print("Bytes received: ");
     Serial.println(len);
@@ -296,6 +290,24 @@ void sendMessage(uint8_t dest_id, message_opcode opcode) {
   // Build new message
   buildMessage(opcode);
   
+  // Send message via ESP-NOW
+  received_esp_reply = false;
+  esp_err_t result = esp_now_send(mac_addresses[dest_id], (uint8_t *) &SendData, sizeof(SendData));
+  if(MY_VERBOSITY < HIGH_VERB) {
+    if (result == ESP_OK) {    
+      Serial.println("Sent with success");
+    } else {
+      Serial.println("Error sending the data");
+    }
+  }
+}
+
+void sendSwitchLightMessage(uint8_t dest_id, light_color nextColor) {
+  // Build new message
+  SendData.sender_id = MY_ID;
+  SendData.opcode = TURN_ON_LIGHT;
+  SendData.timestamp = millis();
+  SendData.color = nextColor;
   // Send message via ESP-NOW
   received_esp_reply = false;
   esp_err_t result = esp_now_send(mac_addresses[dest_id], (uint8_t *) &SendData, sizeof(SendData));
@@ -431,8 +443,8 @@ void keepAppConnection() {
       //start the game
       value = 0;
     }
-    //delay(2000);
-    //startGame = true;
+    delay(2000);
+    startGame = true;
 }
 #endif
 
@@ -618,7 +630,13 @@ void multiPlayerLoop() {
 
     Serial.print("Color (0:OFF, 1:RED, 2:BLUE): ");
     Serial.println(myColor);
-
+    light_color nextColor;
+    if (myColor == RED){
+      nextColor = RED;
+    } else {
+      nextColor = BLUE;
+    }
+    
     // Scan other lights
     uint8_t potentialDeviceInd = 0;
     Serial.println("DEBUG: Start scan");
@@ -651,13 +669,13 @@ void multiPlayerLoop() {
     Serial.println(next_id);
     
     Serial.print("Color (0:OFF, 1:RED, 2:BLUE): ");
-    Serial.println(myColor);
+    Serial.println(nextColor);
     if (next_id != MY_ID) {  // To handle FINAL state transition case
-      sendMessage(next_id, TURN_ON_LIGHT);
+      sendSwitchLightMessage(next_id, nextColor);
     }
     
 
-    delay(1000);
+    delay(100);
 
     turnLightOff();
 
