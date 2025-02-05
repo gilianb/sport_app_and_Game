@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:sport_app/utils/utils.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({
@@ -33,14 +34,15 @@ class GameScreenState extends State<GameScreen> {
     _startCountdown();
   }
 
-  void _addPerformance(int time) async {
+  void _addPerformance(double distance) async {
     // Récupérer la date d'aujourd'hui sous format YYYY-MM-DD
     String todayDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
     // Créer l'objet performance avec la date et le temps reçus
     final performance = {
       'date': todayDate,
-      'time': time,
+      'distance': distance,
+      'time': 60,
     };
 
     final userRef =
@@ -91,7 +93,7 @@ class GameScreenState extends State<GameScreen> {
             // S'assurer qu'on active les notifications une seule fois
             await characteristic.setNotifyValue(true);
             characteristic.onValueReceived.listen((data) async {
-              if (data.isNotEmpty && receivedData.length < 5) {
+              if (data.isNotEmpty && receivedData.length < 100) {
                 print('Données reçues : $data');
                 //setState(() {
                 receivedData.add(data);
@@ -99,16 +101,13 @@ class GameScreenState extends State<GameScreen> {
                 print('Données stockées : $receivedData');
               }
               // Vérification de la condition pour arrêter la réception et naviguer
-              if (receivedData.length >= 5) {
-                print('Réception terminée, arrêt de la notification');
+              if (receivedData.length >= 100) {
                 await characteristic
                     .setNotifyValue(false); // Arrêter après 5 réceptions
-                print('Notification arrêtée');
                 if (_waitingForESP) {
                   setState(() {
                     _waitingForESP = false;
                   });
-                  print('Données reçues : $receivedData');
                 }
               }
             });
@@ -120,18 +119,19 @@ class GameScreenState extends State<GameScreen> {
 
   Future<void> _waitForESP() async {
     await readFromESP();
-
-    // Vérification explicite du nombre de données avant de naviguer
-    if (receivedData.length >= 5) {
-      print("Données final reçues : $receivedData");
-    } else {
-      print("Erreur : Données insuffisantes");
-    }
   }
 
   void end_game() {
-    int time = receivedData.last.first - receivedData.first.first;
-    _addPerformance(time);
+    List<int> final_data =
+        receivedData.map((sublist) => sublist.first).toList();
+    int count = final_data.first; // Récupérer la première valeur
+    print('Nombre de données à récupérer : $count');
+    final_data = final_data.skip(1).take(count).toList();
+    print('Données finales : $final_data');
+    double total_distance = calculateTotalDistance(final_data);
+    print('Distance totale : $total_distance');
+    // int time = receivedData.last.first - receivedData.first.first;
+    _addPerformance(total_distance);
     Navigator.pop(context);
     Navigator.pop(context);
   }

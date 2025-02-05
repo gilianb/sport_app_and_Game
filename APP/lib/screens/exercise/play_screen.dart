@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sport_app/screens/game_screen.dart';
+import 'package:sport_app/screens/exercise/game_screen.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class PlayScreen extends StatefulWidget {
@@ -106,7 +106,8 @@ class PlayScreenState extends State<PlayScreen> {
     for (var service in services!) {
       for (var characteristic in service.characteristics) {
         if (characteristic.properties.write && characteristic.properties.read) {
-          await characteristic.write([1], withoutResponse: false);
+          await characteristic
+              .write([1], withoutResponse: false); // 1 for exercise mode
         }
       }
     }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'exercise_screen.dart';
-import 'fun_screen.dart';
+import 'exercise/exercise_screen.dart';
+import 'fun/fun_screen.dart';
 import 'statistics_screen.dart';
-import 'duel_screen.dart';
+import 'duel/duel_screen.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.id});
@@ -36,7 +36,8 @@ class MyHomePageState extends State<MyHomePage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => FunPage(title: ' $subtitle Mode'),
+          builder: (context) =>
+              FunPage(title: ' $subtitle Mode', id: widget.id),
         ),
       );
     } else if (subtitle == 'Duel') {

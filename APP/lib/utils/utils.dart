@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 // It is essentially a stream but:
 //  1. we cache the latestValue of the stream
@@ -11,7 +12,9 @@ class StreamControllerReemit<T> {
   StreamControllerReemit({T? initialValue}) : _latestValue = initialValue;
 
   Stream<T> get stream {
-    return _latestValue != null ? _controller.stream.newStreamWithInitialValue(_latestValue!) : _controller.stream;
+    return _latestValue != null
+        ? _controller.stream.newStreamWithInitialValue(_latestValue!)
+        : _controller.stream;
   }
 
   T? get value => _latestValue;
@@ -34,7 +37,8 @@ extension _StreamNewStreamWithInitialValue<T> on Stream<T> {
 }
 
 // Helper for 'newStreamWithInitialValue' method for streams.
-class _NewStreamWithInitialValueTransformer<T> extends StreamTransformerBase<T, T> {
+class _NewStreamWithInitialValueTransformer<T>
+    extends StreamTransformerBase<T, T> {
   /// the initial value to push to the new stream
   final T initialValue;
 
@@ -59,10 +63,9 @@ class _NewStreamWithInitialValueTransformer<T> extends StreamTransformerBase<T, 
   }
 
   Stream<T> _bind(Stream<T> stream, {bool broadcast = false}) {
-
     /////////////////////////////////////////
     /// Original Stream Subscription Callbacks
-    /// 
+    ///
 
     /// When the original stream emits data, forward it to our new stream
     void onData(T data) {
@@ -100,22 +103,22 @@ class _NewStreamWithInitialValueTransformer<T> extends StreamTransformerBase<T, 
 
     //////////////////////////////////////
     ///  New Stream Controller Callbacks
-    /// 
+    ///
 
     /// (Single Subscription Only) When a client pauses
-    /// the new stream, pause the original stream 
+    /// the new stream, pause the original stream
     void onPause() {
       subscription.pause();
     }
 
     /// (Single Subscription Only) When a client resumes
-    /// the new stream, resume the original stream 
+    /// the new stream, resume the original stream
     void onResume() {
       subscription.resume();
     }
 
-    /// Called when a client cancels their 
-    /// subscription to the new stream, 
+    /// Called when a client cancels their
+    /// subscription to the new stream,
     void onCancel() {
       // count listeners of the new stream
       listenerCount--;
@@ -131,7 +134,7 @@ class _NewStreamWithInitialValueTransformer<T> extends StreamTransformerBase<T, 
 
     //////////////////////////////////////
     /// Return New Stream
-    /// 
+    ///
 
     // create a new stream controller
     if (broadcast) {
@@ -150,4 +153,33 @@ class _NewStreamWithInitialValueTransformer<T> extends StreamTransformerBase<T, 
 
     return controller.stream;
   }
+}
+
+double calculateTotalDistance(List<int> buzzerSequence) {
+  if (buzzerSequence.isEmpty) return 0.0;
+
+  // Distance initiale du centre au premier buzzer
+  double totalDistance = 5 * sqrt(2);
+
+  // Calcul de la distance parcourue entre chaque paire consécutive
+  for (int i = 0; i < buzzerSequence.length - 1; i++) {
+    int from = buzzerSequence[i];
+    int to = buzzerSequence[i + 1];
+
+    if ((from == 0 && to == 1) || (from == 1 && to == 0)) {
+      totalDistance += 10;
+    } else if ((from == 1 && to == 2) || (from == 2 && to == 1)) {
+      totalDistance += 10;
+    } else if ((from == 2 && to == 3) || (from == 3 && to == 2)) {
+      totalDistance += 10;
+    } else if ((from == 3 && to == 0) || (from == 0 && to == 3)) {
+      totalDistance += 10;
+    } else if ((from == 0 && to == 2) || (from == 2 && to == 0)) {
+      totalDistance += 10 * sqrt(2);
+    } else if ((from == 1 && to == 3) || (from == 3 && to == 1)) {
+      totalDistance += 10 * sqrt(2);
+    }
+  }
+
+  return totalDistance;
 }

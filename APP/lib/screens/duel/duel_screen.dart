@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sport_app/screens/play_screen.dart';
+import 'package:sport_app/screens/duel/game_screen.dart';
+//import 'package:sport_app/screens/duel/play_screen.dart';
 import 'package:sport_app/screens/scan_screen.dart';
-import '../utils/bluetooth_device_provider';
+import '../../utils/bluetooth_device_provider';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class DuelPage extends StatefulWidget {
@@ -34,14 +35,15 @@ class DuelPageState extends State<DuelPage> {
         for (var characteristic in service.characteristics) {
           if (characteristic.properties.write &&
               characteristic.properties.read) {
-            await characteristic.write([0], withoutResponse: false);
-            List<int> response = await characteristic.read();
+            await characteristic.write([2], withoutResponse: false);
+            //await characteristic.write([0], withoutResponse: false);
+            /*List<int> response = await characteristic.read();
 
             if (response.isNotEmpty && response[0] == 0) {
               _showDialog("Connection OK", "ESP32 responded correctly.");
             } else {
               _showDialog("Error", "ESP32 response incorrect.");
-            }
+            }*/
             return;
           }
         }
@@ -80,13 +82,13 @@ class DuelPageState extends State<DuelPage> {
     );
   }
 
-  void _navigateToPlay(connected_device) async {
+  void _navigateToGame(connected_device) async {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PlayScreen(
+        builder: (context) => GameScreen(
           id: widget.id,
-          remainTime: const Duration(seconds: 10),
+          remainTime: const Duration(seconds: 60),
           device: connected_device, // Exemple : 15 minutes
         ),
       ),
@@ -127,7 +129,7 @@ class DuelPageState extends State<DuelPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'Push your limits!',
+                  'challenge your opppenent',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -195,8 +197,8 @@ class DuelPageState extends State<DuelPage> {
                         },
                       );
                     } else {
-                      CheckConn(); //send 1 to ESP
-                      _navigateToPlay(connectedDevice); //start the countdown
+                      CheckConn(); //send 0 to ESP
+                      _navigateToGame(connectedDevice); //start the countdown
                     }
                   },
                   style: ElevatedButton.styleFrom(

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sport_app/screens/play_screen.dart';
+import 'package:sport_app/screens/fun/play_screen.dart';
 import 'package:sport_app/screens/scan_screen.dart';
-import '../utils/bluetooth_device_provider';
+import '../../utils/bluetooth_device_provider';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-class ExercisePage extends StatefulWidget {
-  const ExercisePage({super.key, required this.title, required this.id});
+class FunPage extends StatefulWidget {
+  const FunPage({super.key, required this.title, required this.id});
   final String title;
   final String? id;
 
   @override
-  State<ExercisePage> createState() => ExercisePageState();
+  State<FunPage> createState() => FunPageState();
 }
 
-class ExercisePageState extends State<ExercisePage> {
+class FunPageState extends State<FunPage> {
   final List<Map<String, dynamic>> performanceHistory = [];
 
   void CheckConn() async {
@@ -127,7 +127,7 @@ class ExercisePageState extends State<ExercisePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'Push your limits!',
+                  'Push your limits! but with fun',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -195,7 +195,7 @@ class ExercisePageState extends State<ExercisePage> {
                         },
                       );
                     } else {
-                      CheckConn(); //send 1 to ESP
+                      CheckConn(); //send 0 to ESP
                       _navigateToPlay(connectedDevice); //start the countdown
                     }
                   },
