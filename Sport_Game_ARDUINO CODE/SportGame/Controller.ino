@@ -7,16 +7,16 @@
 #include <Adafruit_NeoPixel.h>
 
 // Device ID ///////////////////
-const uint8_t MY_ID = 1;    ////
-//#define MASTER              ////
+const uint8_t MY_ID = 0;    ////
+#define MASTER              ////
 ////////////////////////////////
 
 // Defines
 // Controler defines
-#define NUM_OF_DEVICES 2
-#define NUM_OF_PLAYERS 2
-#define TIME_THRESHOLD 300000  // in ms
-#define MAX_TIMESTAMP_NUM TIME_THRESHOLD/1000  // TODO: logic is that we will not have button press faster than every 0.5 sec, could think of better solution...
+#define NUM_OF_DEVICES 4
+//#define NUM_OF_PLAYERS 1
+#define TIME_THRESHOLD 60000  // in ms
+#define MAX_TIMESTAMP_NUM TIME_THRESHOLD/500  // TODO: logic is that we will not have button press faster than every 0.5 sec, could think of better solution...
 #define COUNTER_THRESHOLD 20
 
 // Bluetooth defines
@@ -30,9 +30,9 @@ const uint8_t MY_ID = 1;    ////
 
 // Enums
 enum verbosity {LOW_VERB, MEDIUM_VERB, HIGH_VERB};
-enum fsm_state {IDLE,WAIT_APP,LIGHT_ON,LIGHT_OFF,FINAL,HANDLE_TIMESTAMP,SEND_TIMESTAMP,HANDLE_INIT,INIT_STATUS_UDPATE};
+enum fsm_state {IDLE,WAIT_APP,LIGHT_ON,LIGHT_OFF,FINAL,HANDLE_TIMESTAMP,SEND_TIMESTAMP,HANDLE_INIT,INIT_STATUS_UDPATE,INIT_ERROR};
 enum message_opcode {NONE,INIT,TURN_ON_LIGHT,STORE_TIMESTAMP,FINISH,SCAN_COLOR,SCAN_RESPONSE,INC_COLOR,INIT_COLOR};
-enum light_color {OFF,RED,BLUE};
+enum light_color {OFF,RED,BLUE,ERROR};
 
 // Structs
 typedef struct struct_message {
@@ -40,6 +40,7 @@ typedef struct struct_message {
     message_opcode opcode;
     unsigned long timestamp;
     light_color color;
+    bool singlePlayerMode;
 } struct_message;
 
 typedef struct timestamp_entry {
@@ -49,8 +50,10 @@ typedef struct timestamp_entry {
 
 // Global variables ////////////////////////////////////////////////
 bool startGame;
-const bool isSinglePlayerMode = NUM_OF_PLAYERS == 1;
+bool isSinglePlayerMode;// = NUM_OF_PLAYERS == 1;
 light_color myColor;
+uint8_t scanId;
+bool scanAvailable;
 uint8_t potentialNextDeviceIds [NUM_OF_DEVICES-2];
 const verbosity MY_VERBOSITY = MEDIUM_VERB;  // Log verbosity (low - alot of prints, high - no prints)
 const bool matrix_connected = true;  // flag indicating if button is connected to ESP, if false button is simulated randomly
@@ -59,6 +62,7 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 bool buttonState = HIGH;  // button state, TRUE: pressed, FALSE: not pressed
 bool lastButtonState = HIGH;
 bool lightState = false;   // light state, TRUE: ON, FALSE: OFF
+bool hasError;
 #ifdef MASTER
   bool init_status [NUM_OF_DEVICES];  // status of initialization round, send to app if failed
   uint8_t fail_init_counter;
@@ -85,16 +89,19 @@ struct_message SendData;
   bool oldDeviceConnected = false;
   uint32_t value = 1;
   //////////////////////////////////
-  // Time related variables
-  unsigned long StartTime;  // time of game start, reference for all timestamps
 #endif
+
+// Time related variables
+unsigned long StartTime;  // time of game start, reference for all timestamps
 
 // FSM state
 fsm_state state;
 
 // MAC dictionary
 uint8_t mac_addresses[NUM_OF_DEVICES][6] = {{0x0C, 0xB8, 0x15, 0x78, 0xB5, 0xA0},
-                                            {0xC8, 0xF0, 0x9E, 0xA6, 0xC6, 0x2C}};
+                                            {0xC8, 0xF0, 0x9E, 0xA6, 0xC6, 0x2C},
+                                            {0x7C, 0x9E, 0xBD, 0x06, 0x63, 0x7C},
+                                            {0xC8, 0xF0, 0x9E, 0xA6, 0xA7, 0x34}};
 
 //{0x24, 0x0A, 0xC4, 0xEE, 0x34, 0xD0},
 //{0xC8, 0xF0, 0x9E, 0xA6, 0xA7, 0x34}
@@ -111,7 +118,9 @@ void turnLightOn() {
   lightState = true;
   if(matrix_connected) {
     for (int i = 0; i < NUMPIXELS; i++) {
-      if (myColor == RED){
+      if (myColor == ERROR) {
+        pixels.setPixelColor(i, pixels.Color(255, 255, 255));
+      } else if (myColor == RED || isSinglePlayerMode) {
         pixels.setPixelColor(i, pixels.Color(255, 0, 0)); // Rouge
       } else if (myColor == BLUE) {
         pixels.setPixelColor(i, pixels.Color(0, 0, 255));
@@ -156,6 +165,10 @@ void readButton() {
 
 // Perform FSM state transition according to current state and indications
 void fsmTransition(bool received_message, message_opcode opcode, bool start_game, bool button_pressed, bool end_game) {
+  if (state == FINAL && MY_ID == 0){
+    state = WAIT_APP;
+    return;
+  }
   // Hanlde end of game
   if (opcode == FINISH) {
     if (MY_ID == 0) {
@@ -167,6 +180,7 @@ void fsmTransition(bool received_message, message_opcode opcode, bool start_game
     if (lightState) {  // if light is on, turn it off at end of game
       turnLightOff();
     }
+    return;
   }
 
   // Reply color scan
@@ -176,6 +190,8 @@ void fsmTransition(bool received_message, message_opcode opcode, bool start_game
   }
 
   if (opcode == SCAN_RESPONSE) {
+    scanId = ReceiveData.sender_id;
+    scanAvailable = ReceiveData.color == OFF;
     return;
   }
 
@@ -195,6 +211,9 @@ void fsmTransition(bool received_message, message_opcode opcode, bool start_game
         state = FINAL;
       } else if (opcode == INIT) {
         state = HANDLE_INIT;
+        StartTime = millis();  // Game start time (will be reference time for all other timestamps)
+        Serial.print("StartTime: ");
+        Serial.println(StartTime);
       } else if (opcode == STORE_TIMESTAMP) {
         state = HANDLE_TIMESTAMP; 
       } 
@@ -230,7 +249,12 @@ void fsmTransition(bool received_message, message_opcode opcode, bool start_game
       state = IDLE;
     }
   } else if (INIT_STATUS_UDPATE) {
-    state = LIGHT_ON;
+    if (hasError) {
+      state = INIT_ERROR;
+    } else {
+      state = LIGHT_ON;
+    }
+    
   } else if (FINAL) {
     state = WAIT_APP;
   }
@@ -255,6 +279,8 @@ void onDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     Serial.println(ReceiveData.timestamp);
     Serial.print("Color (0:OFF, 1:RED, 2:BLUE): ");
     Serial.println(ReceiveData.color);
+    Serial.print("singlePlayerMode: ");
+    Serial.println(ReceiveData.singlePlayerMode);
     Serial.println();
   }
   
@@ -282,8 +308,9 @@ uint8_t getNextId() {
 void buildMessage(message_opcode opcode) {
   SendData.sender_id = MY_ID;
   SendData.opcode = opcode;
-  SendData.timestamp = millis();
+  SendData.timestamp = millis() - StartTime;
   SendData.color = myColor;
+  SendData.singlePlayerMode = isSinglePlayerMode;
 }
 
 void sendMessage(uint8_t dest_id, message_opcode opcode) {
@@ -306,8 +333,9 @@ void sendSwitchLightMessage(uint8_t dest_id, light_color nextColor) {
   // Build new message
   SendData.sender_id = MY_ID;
   SendData.opcode = TURN_ON_LIGHT;
-  SendData.timestamp = millis();
+  SendData.timestamp = millis() - StartTime;
   SendData.color = nextColor;
+  SendData.singlePlayerMode = isSinglePlayerMode;
   // Send message via ESP-NOW
   received_esp_reply = false;
   esp_err_t result = esp_now_send(mac_addresses[dest_id], (uint8_t *) &SendData, sizeof(SendData));
@@ -336,6 +364,7 @@ void masterInitControl() {
     }
     init_status[device_id] = (esp_status == ESP_NOW_SEND_SUCCESS);
   }
+  hasError = (fail_init_counter != 0);
 }
 
 void sendEndOfGame() {
@@ -349,14 +378,14 @@ void sendAppInitDone() {
       // Send the number of init failures encountered, 0 means SUCCESS
       pCharacteristic->setValue((uint8_t*)&fail_init_counter, 1);
       pCharacteristic->notify();
-      delay(100); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
+      delay(10); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
 
       // Send all device IDs that failed
       for (uint8_t device_id=1; device_id < NUM_OF_DEVICES; device_id++) {  // start from ID=1
         if (init_status[device_id] == false) {
           pCharacteristic->setValue((uint8_t*)&device_id, 1);
           pCharacteristic->notify();
-          delay(100);
+          delay(10);
         }
       }
   }
@@ -368,7 +397,7 @@ void sendAppGameDoneSinglePlayer() {
       // Send the number of timestamps stored on Master
       pCharacteristic->setValue((uint8_t*)&last_timestamp_index,4);
       pCharacteristic->notify();
-      delay(100); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
+      delay(1000); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
 
       for (uint timestamp_indx=0; timestamp_indx < last_timestamp_index; timestamp_indx++) {
         uint8_t curr_id = timestamps[timestamp_indx].id;
@@ -376,12 +405,39 @@ void sendAppGameDoneSinglePlayer() {
         pCharacteristic->setValue((uint8_t*)&curr_id,1);
         pCharacteristic->notify();
         delay(100);
-        pCharacteristic->setValue((uint8_t*)&curr_timestamp,8);
+      /*  pCharacteristic->setValue((uint8_t*)&curr_timestamp,8);
+        pCharacteristic->notify();
+        delay(1000);*/
+      }
+      uint non_id_value=0; 
+      uint temp = 100-last_timestamp_index;
+     
+      for (uint i=0; i<temp; i++){
+        pCharacteristic->setValue((uint8_t*)&non_id_value,4);
         pCharacteristic->notify();
         delay(100);
       }
 
+  
+     // calculate distance 
+     /* uint timestamp_indx_2 = 0;
+      uint distance=0;
+      for(uint timestamp_indx_1=1; timestamp_indx_1 < last_timestamp_index; timestamp_indx_1++){
+        if(abs(timestamps[timestamp_indx_1].id - timestamps[timestamp_indx_2].id) == 1 || abs(timestamps[timestamp_indx_1].id - timestamps[timestamp_indx_2].id) == 3){
+          distance = distance+10;
+          timestamp_indx_2++;
+        }
+        if(abs(timestamps[timestamp_indx_1].id - timestamps[timestamp_indx_2].id) == 2){
+          distance = distance+20;
+          timestamp_indx_2++;
+        }
+      }
+       pCharacteristic->setValue((uint8_t*)&distance,4);
+      pCharacteristic->notify();
+      Serial.println("distance");
+      Serial.println(distance);*/
   }
+  
 }
 
 void sendAppGameDoneMultiPlayer() {
@@ -390,7 +446,7 @@ void sendAppGameDoneMultiPlayer() {
       uint8_t result = (redPlayerCounter > bluePlayerCounter) ? 0 : 1;
       pCharacteristic->setValue((uint8_t*)&result,1);
       pCharacteristic->notify();
-      delay(100); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
+      delay(1000); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
   }
 }
 
@@ -412,7 +468,15 @@ class MyCallbacks : public BLECharacteristicCallbacks
     if ((static_cast<int>(value_from_app[0])) == 1)
     {
       startGame = true;
+      isSinglePlayerMode = true;
+    } else if ((static_cast<int>(value_from_app[0])) == 2) {
+      startGame = true;
+      isSinglePlayerMode = false;
     }
+    Serial.print("isSinglePlayerMode: ");
+    Serial.println(isSinglePlayerMode);
+    Serial.print("startGame: ");
+    Serial.println(startGame);
   }
 };
 
@@ -443,8 +507,8 @@ void keepAppConnection() {
       //start the game
       value = 0;
     }
-    delay(2000);
-    startGame = true;
+    //delay(2000);
+    //startGame = true;
 }
 #endif
 
@@ -470,13 +534,17 @@ void singlePlayerLoop() {
     if(MY_VERBOSITY == LOW_VERB) {
       Serial.println("In HANDLE_INIT state");
     }
+    
     if (MY_ID == 0) {
       #ifdef MASTER
         masterInitControl();
-        StartTime = millis();  // Game start time (will be refernce time for all other timestamps)
+        StartTime = millis();  // Game start time (will be reference time for all other timestamps)
+        Serial.print("StartTime: ");
+        Serial.println(StartTime);
       #endif
       fsmTransition(false, NONE,false, false ,false);
     } else {
+      isSinglePlayerMode = ReceiveData.singlePlayerMode;
       fsmTransition(false, NONE,false, false,false);
     }
   } else if (state == INIT_STATUS_UDPATE) {
@@ -487,6 +555,15 @@ void singlePlayerLoop() {
       sendAppInitDone();  // handle init error (notify app and send status)
     #endif
     fsmTransition(false, NONE,false, false,false);
+  } else if (state == INIT_ERROR) {
+    if(MY_VERBOSITY == LOW_VERB) {
+      Serial.println("In INIT_ERROR state");
+    }
+    #ifdef MASTER
+      myColor = ERROR;
+      delay(10);
+      turnLightOn();
+    #endif
   } else if (state == HANDLE_TIMESTAMP) {
     if(MY_VERBOSITY == LOW_VERB) {
       Serial.println("In HANDLE_TIMESTAMP state");
@@ -495,9 +572,17 @@ void singlePlayerLoop() {
     if (lightState) {  // handle timestamp of master (ID==0)
       timestamps[last_timestamp_index].id = 0;
       timestamps[last_timestamp_index].timestamp = millis() - StartTime;
+      Serial.print("StartTime: ");
+      Serial.println(StartTime);
+      Serial.print("millis(): ");
+      Serial.println(millis());
     } else {  // handle timestamp of other ESP (ID != 0)
       timestamps[last_timestamp_index].id = ReceiveData.sender_id;
-      timestamps[last_timestamp_index].timestamp = ReceiveData.timestamp - StartTime;
+      timestamps[last_timestamp_index].timestamp = ReceiveData.timestamp;
+      Serial.print("StartTime: ");
+      Serial.println(StartTime);
+      Serial.print("ReceiveData.timestamp: ");
+      Serial.println(ReceiveData.timestamp);
     }
     if (timestamps[last_timestamp_index].timestamp >= TIME_THRESHOLD) {  // reached time limit, end the game
       sendEndOfGame(); // send other devices that game ended
@@ -511,9 +596,11 @@ void singlePlayerLoop() {
     if(MY_VERBOSITY == LOW_VERB) {
       Serial.println("In LIGHT_ON state");
     }
+
     if (!lightState) {
       turnLightOn();
     }
+    
     readButton();  // check if button is pressed
     fsmTransition(false, NONE,false, buttonState,false);
   } else if (state == SEND_TIMESTAMP) {
@@ -528,6 +615,8 @@ void singlePlayerLoop() {
     }
     turnLightOff();
     uint8_t next_id = getNextId();  // get next random light to turn on
+    Serial.print("Chosen nex ID: ");
+    Serial.println(next_id);
     if (next_id != MY_ID) {  // To handle FINAL state transition case
       sendMessage(next_id, TURN_ON_LIGHT);
     }
@@ -537,6 +626,10 @@ void singlePlayerLoop() {
       Serial.println("In FINAL state");
     }
     #ifdef MASTER
+      if (lightState) {  // if light is on, turn it off at end of game
+        turnLightOff();
+      }
+      delay(10);
       sendAppGameDoneSinglePlayer();  // send app all timestamps
       Serial.println("DONE");
     #endif
@@ -572,6 +665,7 @@ void multiPlayerLoop() {
       #endif
       fsmTransition(false, NONE,false, false ,false);
     } else {
+      isSinglePlayerMode = ReceiveData.singlePlayerMode;
       fsmTransition(false, NONE,false, false,false);
     }
   } else if (state == INIT_STATUS_UDPATE) {
@@ -580,9 +674,20 @@ void multiPlayerLoop() {
     }
     #ifdef MASTER
       sendAppInitDone();  // handle init error (notify app and send status)
-      sendMessage(1,INIT_COLOR);
+      if (!hasError) {
+        sendMessage(1,INIT_COLOR);
+      }
     #endif
     fsmTransition(false, NONE,false, false,false);
+  } else if (state == INIT_ERROR) {
+    if(MY_VERBOSITY == LOW_VERB) {
+      Serial.println("In INIT_ERROR state");
+    }
+    #ifdef MASTER
+      myColor = ERROR;
+      delay(10);
+      turnLightOn();
+    #endif
   } else if (state == HANDLE_TIMESTAMP) {
     if(MY_VERBOSITY == LOW_VERB) {
       Serial.println("In HANDLE_TIMESTAMP state");
@@ -651,12 +756,12 @@ void multiPlayerLoop() {
       delay(100);
       Serial.println("DEBUG: Checking scan response");
       Serial.println("DEBUG: Response color: ");
-      Serial.println(ReceiveData.color);
-      if (ReceiveData.color == OFF) {
+      Serial.println(scanId);
+      if (scanAvailable) {
         Serial.println("DEBUG: Adding potential device");
         Serial.println(device_id);
         Serial.println(ReceiveData.sender_id);
-        potentialNextDeviceIds[potentialDeviceInd] = ReceiveData.sender_id;
+        potentialNextDeviceIds[potentialDeviceInd] = device_id;
         potentialDeviceInd++;
       }
     }
@@ -685,6 +790,9 @@ void multiPlayerLoop() {
       Serial.println("In FINAL state");
     }
     #ifdef MASTER
+      // if (lightState) {  // if light is on, turn it off at end of game
+      //   turnLightOff();
+      // }
       sendAppGameDoneMultiPlayer();  // send app all timestamps
       Serial.println("DONE");
     #endif
@@ -744,7 +852,7 @@ void setup() {
   #ifdef MASTER
     // BLUETOOTH - INIT ////////////////////////////////////////////////////////
     // Create the BLE Device
-    BLEDevice::init("ESP32");
+    BLEDevice::init("ESP320");
 
     // Create the BLE Server
     pServer = BLEDevice::createServer();
@@ -778,15 +886,18 @@ void setup() {
   #endif
 
   // FSM state init according to device ID
+  lightState = false;
   if (MY_ID == 0) {
     #ifdef MASTER
       state = WAIT_APP;
       last_timestamp_index = 0;
       fail_init_counter = 0;
       myColor = RED;
+      hasError = false;
     #endif
   } else {
     state = IDLE;
+    myColor = OFF;
   }
 }
 
