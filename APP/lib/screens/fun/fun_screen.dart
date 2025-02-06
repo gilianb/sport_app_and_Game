@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sport_app/screens/fun/play_screen.dart';
+import 'package:sport_app/screens/fun/game_screen.dart';
+//import 'package:sport_app/screens/exercise/play_screen.dart';
 import 'package:sport_app/screens/scan_screen.dart';
 import '../../utils/bluetooth_device_provider';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -34,14 +35,16 @@ class FunPageState extends State<FunPage> {
         for (var characteristic in service.characteristics) {
           if (characteristic.properties.write &&
               characteristic.properties.read) {
+            await characteristic.write([1], withoutResponse: false);
             await characteristic.write([0], withoutResponse: false);
-            List<int> response = await characteristic.read();
+
+            /*List<int> response = await characteristic.read();
 
             if (response.isNotEmpty && response[0] == 0) {
               _showDialog("Connection OK", "ESP32 responded correctly.");
             } else {
               _showDialog("Error", "ESP32 response incorrect.");
-            }
+            }*/
             return;
           }
         }
@@ -80,14 +83,14 @@ class FunPageState extends State<FunPage> {
     );
   }
 
-  void _navigateToPlay(connected_device) async {
+  void _navigateToGame(connected_device) async {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PlayScreen(
+        builder: (context) => GameScreen(
+          remainTime: Duration(seconds: 60),
           id: widget.id,
-          remainTime: const Duration(seconds: 10),
-          device: connected_device, // Exemple : 15 minutes
+          device: connected_device,
         ),
       ),
     );
@@ -195,8 +198,8 @@ class FunPageState extends State<FunPage> {
                         },
                       );
                     } else {
-                      CheckConn(); //send 0 to ESP
-                      _navigateToPlay(connectedDevice); //start the countdown
+                      CheckConn(); //send 1 to ESP
+                      _navigateToGame(connectedDevice); //start the countdown
                     }
                   },
                   style: ElevatedButton.styleFrom(

@@ -50,7 +50,7 @@ class _WinnerScreenState extends State<WinnerScreen>
   @override
   Widget build(BuildContext context) {
     String winnerText =
-        widget.winner == 1 ? "Équipe Rouge Gagne !" : "Équipe Bleue Gagne !";
+        widget.winner == 1 ? "Red player win" : "Blue player win !";
     Color winnerColor = widget.winner == 1 ? Colors.red : Colors.blue;
 
     return Scaffold(
@@ -84,7 +84,7 @@ class _WinnerScreenState extends State<WinnerScreen>
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text(
-                  "Retour",
+                  "back",
                   style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

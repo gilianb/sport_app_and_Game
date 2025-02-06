@@ -43,17 +43,15 @@ class StatisticsPageState extends State<StatisticsPage>
           controller: _tabController,
           tabs: const [
             Tab(text: "My Statistics"),
-            Tab(text: "Global Statistics "),
+            Tab(text: "Global Statistics"),
           ],
-          labelColor: Colors.white, // Color for selected tab text
-          unselectedLabelColor:
-              Colors.grey[400], // Color for unselected tab text
-          indicatorColor: Colors.orangeAccent, // Indicator color for active tab
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.grey[400],
+          indicatorColor: Colors.orangeAccent,
         ),
       ),
       body: Stack(
         children: [
-          // Background Image
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -62,16 +60,20 @@ class StatisticsPageState extends State<StatisticsPage>
               ),
             ),
           ),
-          // Semi-transparent overlay
           Container(
             color: Colors.black.withOpacity(0.6),
           ),
-          // Tab View
           TabBarView(
             controller: _tabController,
             children: [
-              UserPerformanceStatistics(userId: widget.id),
-              AllUsersStatistics()
+              SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: UserPerformanceStatistics(userId: widget.id),
+              ),
+              SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: AllUsersStatistics(),
+              ),
             ],
           ),
         ],
@@ -85,21 +87,20 @@ class AllUsersStatistics extends StatelessWidget {
     final usersCollection = FirebaseFirestore.instance.collection('users');
     final querySnapshot = await usersCollection.get();
 
-    // Récupération des données et calcul des statistiques
     return querySnapshot.docs.map((doc) {
       final data = doc.data();
       final performanceHistory =
           List<Map<String, dynamic>>.from(data['performanceHistory'] ?? []);
       final totalDistance = performanceHistory
           .map((e) => double.tryParse(e['distance'].toString()) ?? 0.0)
-          .fold(0.0, (double sum, double element) => sum + element);
+          .fold(0.0, (sum, element) => sum + element);
 
       final totalTime = performanceHistory
           .map((e) => double.tryParse(e['time'].toString()) ?? 0.0)
-          .fold(0.0, (double sum, double element) => sum + element);
+          .fold(0.0, (sum, element) => sum + element);
 
       return {
-        'username': data['username'] ?? 'Unknown', // Nom de l'utilisateur
+        'username': data['username'] ?? 'Unknown',
         'totalDistance': totalDistance,
         'totalTime': totalTime,
       };
@@ -136,57 +137,42 @@ class AllUsersStatistics extends StatelessWidget {
                 fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 20),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection:
-                  Axis.horizontal, // Permet le défilement horizontal
-              child: DataTable(
-                columns: const [
-                  DataColumn(
-                    label: Text(
-                      'Username',
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: const [
+                DataColumn(
+                  label: Text('Username',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Total Distance (km)',
+                          color: Colors.white)),
+                ),
+                DataColumn(
+                  label: Text('Total Distance (km)',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Total Time (h)',
+                          color: Colors.white)),
+                ),
+                DataColumn(
+                  label: Text('Total Time (h)',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
-                  ),
-                ],
-                rows: usersData.map((user) {
-                  return DataRow(cells: [
-                    DataCell(Text(
-                      user['username'],
-                      style: const TextStyle(color: Colors.white70),
-                    )),
-                    DataCell(Text(
-                      user['totalDistance'].toStringAsFixed(2),
-                      style: const TextStyle(color: Colors.white70),
-                    )),
-                    DataCell(Text(
-                      user['totalTime'].toStringAsFixed(2),
-                      style: const TextStyle(color: Colors.white70),
-                    )),
-                  ]);
-                }).toList(),
-              ),
+                          color: Colors.white)),
+                ),
+              ],
+              rows: usersData.map((user) {
+                return DataRow(cells: [
+                  DataCell(Text(user['username'],
+                      style: const TextStyle(color: Colors.white70))),
+                  DataCell(Text(user['totalDistance'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70))),
+                  DataCell(Text(user['totalTime'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70))),
+                ]);
+              }).toList(),
             ),
           ),
         ],
@@ -198,7 +184,7 @@ class AllUsersStatistics extends StatelessWidget {
 class UserPerformanceStatistics extends StatelessWidget {
   final String? userId;
 
-  UserPerformanceStatistics({required this.userId});
+  const UserPerformanceStatistics({super.key, required this.userId});
 
   Future<List<Map<String, dynamic>>> _fetchUserData() async {
     final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
@@ -212,10 +198,9 @@ class UserPerformanceStatistics extends StatelessWidget {
     final performanceHistory =
         List<Map<String, dynamic>>.from(data?['performanceHistory'] ?? []);
 
-    // Assurez-vous que chaque entrée a les champs nécessaires
     return performanceHistory.map((performance) {
       return {
-        'date': performance['date'] ?? 'Unknown Date', // Date de la performance
+        'date': performance['date'] ?? 'Unknown Date',
         'distance': double.tryParse(performance['distance'].toString()) ?? 0.0,
         'time': double.tryParse(performance['time'].toString()) ?? 0.0,
       };
@@ -230,12 +215,12 @@ class UserPerformanceStatistics extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
-          return Center(child: Text("Error : ${snapshot.error}"));
+          return Center(child: Text("Erreur : ${snapshot.error}"));
         } else if (snapshot.hasData) {
           final performanceData = snapshot.data!;
           return _buildTable(performanceData);
         } else {
-          return const Center(child: Text("No data available."));
+          return const Center(child: Text("Aucune donnée disponible."));
         }
       },
     );
@@ -252,56 +237,42 @@ class UserPerformanceStatistics extends StatelessWidget {
                 fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 20),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(
-                    label: Text(
-                      'Date',
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: const [
+                DataColumn(
+                  label: Text('Date',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Distance (km)',
+                          color: Colors.white)),
+                ),
+                DataColumn(
+                  label: Text('Distance (km)',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Time (h)',
+                          color: Colors.white)),
+                ),
+                DataColumn(
+                  label: Text('Time (sec)',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
-                  ),
-                ],
-                rows: performanceData.map((performance) {
-                  return DataRow(cells: [
-                    DataCell(Text(
-                      performance['date'],
-                      style: const TextStyle(color: Colors.white70),
-                    )),
-                    DataCell(Text(
-                      performance['distance'].toStringAsFixed(2),
-                      style: const TextStyle(color: Colors.white70),
-                    )),
-                    DataCell(Text(
-                      performance['time'].toStringAsFixed(2),
-                      style: const TextStyle(color: Colors.white70),
-                    )),
-                  ]);
-                }).toList(),
-              ),
+                          color: Colors.white)),
+                ),
+              ],
+              rows: performanceData.map((performance) {
+                return DataRow(cells: [
+                  DataCell(Text(performance['date'],
+                      style: const TextStyle(color: Colors.white70))),
+                  DataCell(Text(performance['distance'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70))),
+                  DataCell(Text(performance['time'].toStringAsFixed(2),
+                      style: const TextStyle(color: Colors.white70))),
+                ]);
+              }).toList(),
             ),
           ),
         ],

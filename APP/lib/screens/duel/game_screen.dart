@@ -51,7 +51,7 @@ class GameScreenState extends State<GameScreen> {
   /// Écoute les données envoyées par l'ESP
   Future<void> readFromESP() async {
     if (widget.device == null) {
-      print("Aucun appareil connecté !");
+      print("No device connected");
       return;
     }
 
@@ -65,23 +65,23 @@ class GameScreenState extends State<GameScreen> {
             await characteristic.setNotifyValue(true);
             characteristic.onValueReceived.listen((data) async {
               if (data.isNotEmpty && receivedData.length < 1) {
-                print('Données reçues : $data');
+                // print('Données reçues : $data');
                 //setState(() {
                 receivedData.add(data);
                 //});
-                print('Données stockées : $receivedData');
+                //print('Données stockées : $receivedData');
               }
               // Vérification de la condition pour arrêter la réception et naviguer
               if (receivedData.length >= 1) {
-                print('Réception terminée, arrêt de la notification');
+                //  print('Réception terminée, arrêt de la notification');
                 await characteristic
                     .setNotifyValue(false); // Arrêter après 5 réceptions
-                print('Notification arrêtée');
+                //  print('Notification arrêtée');
                 if (_waitingForESP) {
                   setState(() {
                     _waitingForESP = false;
                   });
-                  print('Données reçues : $receivedData');
+                  //   print('Données reçues : $receivedData');
                 }
               }
             });
@@ -162,7 +162,7 @@ class GameScreenState extends State<GameScreen> {
                         iconColor: Colors.blue, // Couleur du bouton
                       ),
                       child: const Text(
-                        'Fin du jeu',
+                        'End of game',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

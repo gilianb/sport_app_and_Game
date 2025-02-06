@@ -51,7 +51,7 @@ class GameScreenState extends State<GameScreen> {
   /// Écoute les données envoyées par l'ESP
   Future<void> readFromESP() async {
     if (widget.device == null) {
-      print("Aucun appareil connecté !");
+      //print("Aucun appareil connecté !");
       return;
     }
 
@@ -65,11 +65,11 @@ class GameScreenState extends State<GameScreen> {
             await characteristic.setNotifyValue(true);
             characteristic.onValueReceived.listen((data) async {
               if (data.isNotEmpty && receivedData.length < 5) {
-                print('Données reçues : $data');
+                //print('Données reçues : $data');
                 //setState(() {
                 receivedData.add(data);
                 //});
-                print('Données stockées : $receivedData');
+                //print('Données stockées : $receivedData');
               }
               // Vérification de la condition pour arrêter la réception et naviguer
               if (receivedData.length >= 5) {
@@ -167,7 +167,7 @@ class GameScreenState extends State<GameScreen> {
                         iconColor: Colors.blue, // Couleur du bouton
                       ),
                       child: const Text(
-                        'Fin du jeu',
+                        'End of Game',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

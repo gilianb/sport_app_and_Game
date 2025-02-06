@@ -3,6 +3,7 @@ import 'exercise/exercise_screen.dart';
 import 'fun/fun_screen.dart';
 import 'statistics_screen.dart';
 import 'duel/duel_screen.dart';
+import 'rules_screen.dart'; // Assurez-vous d'avoir cette page
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.id});
@@ -29,7 +30,7 @@ class MyHomePageState extends State<MyHomePage> {
         context,
         MaterialPageRoute(
           builder: (context) =>
-              StatisticsPage(title: ' $subtitle Mode', id: widget.id),
+              StatisticsPage(title: ' $subtitle', id: widget.id),
         ),
       );
     } else if (subtitle == 'Fun time') {
@@ -48,6 +49,14 @@ class MyHomePageState extends State<MyHomePage> {
               DuelPage(title: ' $subtitle Mode', id: widget.id),
         ),
       );
+    } else if (subtitle == 'Rules of the Game') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              RulesPage(title: 'Rules of the Game', id: widget.id),
+        ),
+      );
     }
   }
 
@@ -55,15 +64,16 @@ class MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          backgroundColor: const Color.fromARGB(255, 15, 91, 124),
-          title: Text(
-            widget.title,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          )),
+        backgroundColor: const Color.fromARGB(255, 15, 91, 124),
+        title: Text(
+          widget.title,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           Container(
@@ -99,9 +109,11 @@ class MyHomePageState extends State<MyHomePage> {
                       _buildModeCard(
                           "Mode 2", Icons.sports_soccer, "Fun time", widget.id),
                       _buildModeCard(
-                          "Mode 3", Icons.query_stats, "Statistics", widget.id),
+                          "Stats", Icons.query_stats, "Statistics", widget.id),
                       _buildModeCard(
-                          "Mode 4", Icons.sports_kabaddi, "Duel", widget.id),
+                          "Mode 3", Icons.sports_kabaddi, "Duel", widget.id),
+                      _buildModeCard(
+                          "Rules", Icons.rule, "Rules of the Game", widget.id),
                     ],
                   ),
                 ),

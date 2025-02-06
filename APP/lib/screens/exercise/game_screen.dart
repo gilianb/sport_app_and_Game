@@ -80,7 +80,6 @@ class GameScreenState extends State<GameScreen> {
   /// Écoute les données envoyées par l'ESP
   Future<void> readFromESP() async {
     if (widget.device == null) {
-      print("Aucun appareil connecté !");
       return;
     }
 
@@ -196,7 +195,7 @@ class GameScreenState extends State<GameScreen> {
                         iconColor: Colors.blue, // Couleur du bouton
                       ),
                       child: const Text(
-                        'Fin du jeu',
+                        'End of Game',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
