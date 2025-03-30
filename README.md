@@ -1,4 +1,4 @@
-# IoT Sport Game
+# IoT Sports Game
 
 This repository contains an IoT-based sports game where players must press buzzers as quickly as possible. The system is controlled via a Flutter application and uses BLE and ESP-NOW for communication.
 
@@ -8,8 +8,8 @@ This repository contains an IoT-based sports game where players must press buzze
 - **Player Buzzers (4x ESP32)** – Connected via ESP-NOW to the master, registering button presses.
 
 ## Repository Structure
-- `flutter_app/` – Flutter application code.
-- `esp32_firmware/` – Arduino code for the master and player buzzers.
+- `app/` – Flutter application code.
+- `Sport_Game_Arduino_Code/` – Arduino code for the master and player buzzers.
 
 ## Setup Instructions
 1. Install dependencies in `pubspec.yaml` for Flutter.
@@ -20,10 +20,11 @@ This repository contains an IoT-based sports game where players must press buzze
 1. The app starts and connects to the master ESP32 via BLE.
 2. The master communicates with the four buzzers via ESP-NOW.
 3. Players press their buzzers as fast as possible; the master registers the first press and updates the app.
+4. At the end of the Game, the Data are sent to a firebase server and displayed on the App.
 
 ## Demo Videos
-Short demonstration videos are available in the `Video/Final_video` folder.
+Short demonstration videos are available in the `Video/` folder.
 
 ---
-Developed by [Your Name]
+Developed by Gilian Bensoussan
 
