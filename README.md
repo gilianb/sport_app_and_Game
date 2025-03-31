@@ -23,8 +23,9 @@ This repository contains an IoT-based sports game where players must press buzze
 4. At the end of the Game, the Data are sent to a firebase server and displayed on the App.
 
 ## Demo Videos
-Short demonstration videos are available in the `Video/` folder.
+Short demonstration videos are available in the following link
+https://technionmail-my.sharepoint.com/personal/rubentimsit_campus_technion_ac_il/_layouts/15/stream.aspx?id=%2Fpersonal%2Frubentimsit%5Fcampus%5Ftechnion%5Fac%5Fil%2FDocuments%2FAttachments%2FSport%5Fgame%201%2Emp4&referrer=StreamWebApp%2EWeb&referrerScenario=AddressBarCopied%2Eview%2E489aa523%2Ddd0a%2D480a%2D836d%2Da742b52f44b9
 
 ---
-Developed by Gilian Bensoussan
+Developed by Gilian Bensoussan, Ruben Timsit and Daniel Ben Shlush
 
